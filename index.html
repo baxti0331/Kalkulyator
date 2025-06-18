@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Умный калькулятор с тригонометрией</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap');
+  body {
+    background: #1e1e2f;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    color: #eee;
+  }
+  .calculator {
+    background: linear-gradient(145deg, #2e2e45, #1a1a2b);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    border-radius: 20px;
+    width: 380px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+  }
+  .display {
+    background: #111122;
+    border-radius: 15px;
+    padding: 20px;
+    font-size: 2.2rem;
+    min-height: 60px;
+    word-wrap: break-word;
+    box-shadow: inset 0 0 10px #444;
+    user-select: none;
+    white-space: pre-wrap;
+  }
+  .hint {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #ff6666;
+    min-height: 22px;
+    font-weight: 600;
+    font-style: italic;
+    user-select: none;
+  }
+  .history {
+    background: #222237;
+    margin-top: 15px;
+    max-height: 140px;
+    overflow-y: auto;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.9rem;
+    color: #bbb;
+  }
+  .history-item {
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    padding: 3px 6px;
+    border-radius: 5px;
+  }
+  .history-item:hover {
+    background: #444466;
+  }
+  .buttons {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  button {
+    font-size: 1.4rem;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    background: #3b3b56;
+    color: #ddd;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: background 0.25s ease;
+    user-select: none;
+  }
+  button:hover {
+    background: #565677;
+  }
+  button.operator {
+    background: #8a4fff;
+    color: #fff;
+    font-weight: 700;
+  }
+  button.operator:hover {
+    background: #a56fff;
+  }
+  button.equals {
+    background: #00bfa6;
+    color: #fff;
+    font-weight: 700;
+    grid-column: span 2;
+  }
+  button.equals:hover {
+    background: #33d9bd;
+  }
+  button.clear {
+    background: #ff4f5a;
+    color: #fff;
+    font-weight: 700;
+  }
+  button.clear:hover {
+    background: #ff6f7a;
+  }
+  .func {
+    background: #5a6cff;
+  }
+  .func:hover {
+    background: #7b8dff;
+  }
+</style>
+</head>
+<body>
+
+<div class="calculator" role="main" aria-label="Умный калькулятор с тригонометрией и функциями">
+  <div class="display" id="display" aria-live="polite" aria-atomic="true">0</div>
+  <div class="hint" id="hint" aria-live="assertive"></div>
+  <div class="history" id="history" aria-label="История вычислений"></div>
+  <div class="buttons" role="group" aria-label="Кнопки калькулятора">
+    <button class="clear" aria-label="Очистить">C</button>
+    <button aria-label="Открывающая скобка">(</button>
+    <button aria-label="Закрывающая скобка">)</button>
+    <button class="operator" aria-label="Деление">÷</button>
+    <button class="operator" aria-label="Умножение">×</button>
+
+    <button class="func" aria-label="sin">sin</button>
+    <button class="func" aria-label="cos">cos</button>
+    <button class="func" aria-label="tan">tan</button>
+    <button class="func" aria-label="log">log</button>
+    <button class="func" aria-label="sqrt">√</button>
+
+    <button aria-label="Семёрка">7</button>
+    <button aria-label="Восьмёрка">8</button>
+    <button aria-label="Девятка">9</button>
+    <button class="operator" aria-label="Вычитание">−</button>
+    <button class="func" aria-label="abs">abs</button>
+
+    <button aria-label="Четвёрка">4</button>
+    <button aria-label="Пятёрка">5</button>
+    <button aria-label="Шестёрка">6</button>
+    <button class="operator" aria-label="Сложение">+</button>
+    <button aria-label="Константа π">π</button>
+
+    <button aria-label="Один">1</button>
+    <button aria-label="Два">2</button>
+    <button aria-label="Три">3</button>
+    <button aria-label="Ноль">0</button>
+    <button aria-label="Десятичная точка">.</button>
+
+    <button class="operator" aria-label="Процент">%</button>
+    <button class="equals" aria-label="Равно">=</button>
+  </div>
+</div>
+
+<script>
+  const display = document.getElementById('display');
+  const historyEl = document.getElementById('history');
+  const hintEl = document.getElementById('hint');
+  const buttons = document.querySelectorAll('.buttons button');
+
+  let currentExpression = '';
+  let history = [];
+
+  // Функции, доступные в выражениях
+  const functions = {
+    sin: Math.sin,
+    cos: Math.cos,
+    tan: Math.tan,
+    log: Math.log10 || ((x) => Math.log(x)/Math.LN10),
+    sqrt: Math.sqrt,
+    abs: Math.abs,
+  };
+
+  // Константы
+  const constants = {
+    pi: Math.PI,
+    π: Math.PI,
+    e: Math.E,
+  };
+
+  // Автоисправление и очистка выражения
+  function autoCorrect(expr) {
+    expr = expr.replace(/÷/g, '/').replace(/×/g, '*').replace(/−/g, '-').replace(/√/g, 'sqrt');
+    expr = expr.replace(/π/g, 'pi');
+
+    // Удаление повторяющихся операторов кроме минуса
+    expr = expr.replace(/([+\/*]){2,}/g, '$1');
+    expr = expr.replace(/\s+/g, '');
+
+    return expr;
+  }
+
+  // Проверка баланса скобок
+  function checkBrackets(expr) {
+    let balance = 0;
+    for (const ch of expr) {
+      if (ch === '(') balance++;
+      else if (ch === ')') balance--;
+      if (balance < 0) return false;
+    }
+    return balance === 0;
+  }
+
+  // Проверка корректности выражения (простая)
+  function validateExpression(expr) {
+    if (!expr) return 'Введите выражение';
+
+    if (/[^0-9+\-*/%.()a-zA-Zπ]/.test(expr)) return 'Недопустимые символы';
+
+    if (!checkBrackets(expr)) return 'Неверное количество скобок';
+
+    if (/([+\/*]){2,}/.test(expr)) return 'Ошибка: несколько операторов подряд';
+
+    if (/^[+\/*]/.test(expr)) return 'Выражение не может начинаться с оператора';
+    if (/[+\-*/]$/.test(expr)) return 'Выражение не может заканчиваться оператором';
+
+    return null;
+  }
+
+  // Безопасное вычисление с поддержкой функций и констант
+  function safeEval(expr) {
+    expr = expr.replace(/%/g, '/100');
+
+    // Заменяем константы на числа
+    for (const key in constants) {
+      const re = new RegExp(`\\b${key}\\b`, 'g');
+      expr = expr.replace(re, constants[key]);
+    }
+
+    // Создаем функцию с локальными функциями
+    const funcNames = Object.keys(functions);
+    const funcArgs = funcNames.join(',');
+
+    const funcBody = `"use strict";return (${expr})`;
+
+    try {
+      // eslint-disable-next-line no-new-func
+      const f = new Function(funcArgs, funcBody);
+      const funcVals = funcNames.map(name => functions[name]);
+      return f(...funcVals);
+    } catch {
+      return null;
+    }
+  }
+
+  function updateDisplay() {
+    display.textContent = currentExpression || '0';
+  }
+
+  function addToHistory(expr, result) {
+    history.push({ expr, result });
+    if (history.length > 10) history.shift();
+
+    historyEl.innerHTML = '';
+    history.slice().reverse().forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.textContent = `${item.expr} = ${item.result}`;
+      div.tabIndex = 0;
+      div.setAttribute('role', 'button');
+      div.setAttribute('aria-pressed', 'false');
+      div.addEventListener('click', () => {
+        currentExpression = item.expr;
+        updateDisplay();
+        hintEl.textContent = '';
+      });
+      div.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          currentExpression = item.expr;
+          updateDisplay();
+          hintEl.textContent = '';
+        }
+      });
+      historyEl.appendChild(div);
+    });
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      let val = btn.textContent;
+
+      if (btn.classList.contains('clear')) {
+        currentExpression = '';
+        hintEl.textContent = '';
+        updateDisplay();
+        return;
+      }
+
+      if (btn.classList.contains('equals')) {
+        let corrected = autoCorrect(currentExpression);
+        let err = validateExpression(corrected);
+        if (err) {
+          hintEl.textContent = err;
+          return;
+        }
+        const result = safeEval(corrected);
+        if (result === null || isNaN(result)) {
+          hintEl.textContent = 'Ошибка вычисления';
+          return;
+        }
+        addToHistory(currentExpression, result);
+        currentExpression = result.toString();
+        updateDisplay();
+        hintEl.textContent = '';
+        return;
+      }
+
+      // Спецобработка функций для вставки с ()
+      if (btn.classList.contains('func')) {
+        val += '(';
+      }
+
+      currentExpression += val;
+      currentExpression = autoCorrect(currentExpression);
+
+      let err = validateExpression(currentExpression);
+      if (err) {
+        hintEl.textContent = err;
+      } else {
+        hintEl.textContent = '';
+      }
+
+      updateDisplay();
+    });
+  });
+
+  updateDisplay();
+</script>
+
+</body>
+</html>
